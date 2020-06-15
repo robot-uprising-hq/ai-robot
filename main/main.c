@@ -1,11 +1,12 @@
-/* Hello World Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
+/*
+ * Robot Uprising: Micro-Invaders 2020
+ *
+ * Robot frontend. This connects the robot to Wifi and to the robot
+ * backend, allowing the robot to be remotely controlled.
+ *
+ * At minimum, need to get some rudimentary status information from
+ * the robot and be able to control left and right track motors.
+ */
 
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
@@ -74,6 +75,22 @@ static esp_err_t set_config(nvs_handle_t handle, const char *key, const char *va
     return err;
 }
 
+const char *help_text =
+"Command loop help\n"\
+"\n"\
+"Typing commands does not echo, turn on local echo on your terminal \n"\
+"if you need it.\n"\
+"\n"\
+"help                Show this help.\n"\
+"scan                Do a quick Wifi AP scan.\n"\
+"query               Show configuration.\n"\
+"query all           Show all configuration, including passwords.\n"\
+"set ssid SSID       Set WiFi AP to use to SSID.\n"\
+"set passwd PASSWD   Set Wifi password to PASSWD.\n"\
+"wifistart           (Attempt to) start WiFi.\n"\
+"wifistop            Disconnect from WiFi.\n"\
+"quit                Exit command-loop (mainly for debugging).\n"
+"\n";
 static void command_loop_task(void *param)
 {
     uart0_init();
@@ -125,6 +142,8 @@ static void command_loop_task(void *param)
         } else if (strncmp(buf, "set passwd", 10) == 0) {
             rtrim(buf, sizeof(buf));
             set_config(handle, "wifi-passwd", &buf[11]);
+        } else if (strncmp(buf, "help", 4) == 0) {
+            printf(help_text);
         } else if (strncmp(buf, "wifistart", 9) == 0) {
             char passwd[60] = "";
             size_t passwd_length = sizeof(passwd);
