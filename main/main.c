@@ -22,6 +22,7 @@
 #include "console.h"
 #include "wifiscan.h"
 #include "wificonnect.h"
+#include "udpserver.h"
 
 static const char* TAG = "robotfrontend";
 
@@ -75,6 +76,12 @@ static esp_err_t set_config(nvs_handle_t handle, const char *key, const char *va
     return err;
 }
 
+static void udp_server_task(void *pvParameters)
+{
+    udp_server();
+    vTaskDelete(NULL);
+}
+
 const char *help_text =
 "Command loop help\n"\
 "\n"\
@@ -102,12 +109,16 @@ static void command_loop_task(void *param)
         ESP_LOGE(TAG, "Failed to open storage: %s",  esp_err_to_name(err));
     }
 
+    TaskHandle_t udp_server_handle = NULL;
+
     while (1)
     {
+        // TODO: Add MAC address of the WiFi as well.
         char ipaddr[32] = "";
 
         get_ip_addr(ipaddr, sizeof(ipaddr));
         printf("%s%sEnter command:\n", ipaddr, *ipaddr ? " " : "");
+
         char buf[60] = "";
         my_fgets(buf, sizeof(buf) - 1, fileno(stdin));
         buf[sizeof(buf) - 1] = '\0';
@@ -160,6 +171,15 @@ static void command_loop_task(void *param)
             }
             if (err != ESP_OK) {
                 printf("Wifi not configured.\n");
+            }
+        } else if (strncmp(buf, "udpserver", 9) == 0) {
+            if (!udp_server_handle) {
+                 BaseType_t ret = xTaskCreate(udp_server_task, "udp_server", 4 * 1024, NULL, 5, &udp_server_handle);
+                 if (ret != pdPASS) {
+                     printf("Error creating task: %d\n", ret);
+                 }
+            } else {
+                printf("UDP server already running.\n");
             }
         } else if (strncmp(buf, "wifistop", 8) == 0) {
 
