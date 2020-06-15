@@ -35,6 +35,39 @@ static void uart0_init(void)
     esp_vfs_dev_uart_use_driver(0);
 }
 
+/*
+ * Right-trim whitespace from given buffer.
+ */
+static void rtrim(char *buf, size_t buf_len)
+{
+    for (int ii = 0; ii < buf_len; ii++) {
+        char *p = &buf[buf_len - 1 - ii];
+        if (isspace(*p)) {
+            *p = '\0';
+        } else if (*p == '\0') {
+            continue;
+        } else {
+            // Anything else, stop trim.
+            break;
+        }
+    }
+}
+
+static esp_err_t set_config(nvs_handle_t handle, const char *key, const char *val)
+{
+    esp_err_t err = nvs_set_str(handle, key, val);
+    if (err != ESP_OK) {
+        printf("Failed to write key: %s\n", esp_err_to_name(err));
+    } else {
+        err = nvs_commit(handle);
+        if (err != ESP_OK) {
+            printf("Commit failed after writing key: %s\n", esp_err_to_name(err));
+        }
+        printf("Wrote %s.", key);
+    }
+    return err;
+}
+
 static void echo_task(void *param)
 {
     uart0_init();
@@ -57,33 +90,32 @@ static void echo_task(void *param)
         if (strncmp(buf, "scan", 4) == 0) {
             wifi_scan();
         } else if (strncmp(buf, "query", 5) == 0) {
-            char ssid[40] = "";
-            size_t ssid_length = sizeof(ssid);
-            err = nvs_get_str(handle, "wifi-ssid", ssid, &ssid_length);
+            char string[40] = "";
+            size_t string_length = sizeof(string);
+            err = nvs_get_str(handle, "wifi-ssid", string, &string_length);
             if (err != ESP_OK) {
                 printf("Failed to get key: %s\n", esp_err_to_name(err));
             } else {
-                printf("wifi-ssid: \"%s\"\n", ssid);
+                printf("wifi-ssid: \"%s\"\n", string);
             }
-        } else if (strncmp(buf, "set", 3) == 0) {
-            for (int ii = 0; ii < sizeof(buf); ii++) {
-                char *p = &buf[sizeof(buf) - 1 - ii];
-                if (isspace(*p)) {
-                    *p = '\0';
-                } else if (*p == '\0') {
-                    continue;
+
+            string_length = sizeof(string);
+            err = nvs_get_str(handle, "wifi-passwd", string, &string_length);
+            if (err != ESP_OK) {
+                printf("Failed to get key: %s\n", esp_err_to_name(err));
+            } else {
+                if (strncmp(buf, "query all", 9) == 0) {
+                    printf("wifi-passwd: \"%s\"\n", string);
                 } else {
-                    // Anything else, stop trim.
-                    break;
+                    printf("wifi-passwd: <is set>\n");
                 }
             }
-            err = nvs_set_str(handle, "wifi-ssid", &buf[4]);
-            if (err != ESP_OK) {
-                printf("Failed to write key: %s\n", esp_err_to_name(err));
-            } else {
-                printf("Wrote wifi-ssid.");
-            }
-            // XXX run nvs_commit
+        } else if (strncmp(buf, "set ssid", 8) == 0) {
+            rtrim(buf, sizeof(buf));
+            set_config(handle, "wifi-ssid", &buf[9]);
+        } else if (strncmp(buf, "set passwd", 10) == 0) {
+            rtrim(buf, sizeof(buf));
+            set_config(handle, "wifi-passwd", &buf[11]);
         } else if (strncmp(buf, "quit", 4) == 0) {
             printf("Quitting for testing deinit code...\n");
             break;
