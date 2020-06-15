@@ -15,20 +15,26 @@
 #include "esp_log.h"
 #include "esp_vfs_dev.h"
 #include "driver/uart.h"
-#include "console.h"
-#include "wifi.h"
 #include "nvs_flash.h"
 #include <ctype.h>
+#include "esp_wifi.h"
+#include "console.h"
+#include "wifiscan.h"
+#include "wificonnect.h"
 
 static const char* TAG = "robotfrontend";
 
-// Uninstall UART communications driver.
+/*
+ * Uninstall UART communications driver.
+ */
 static void uart0_deinit(void)
 {
     uart_driver_delete(UART_NUM_0);
 }
 
-// Install UART communications driver.
+/*
+ * Install UART communications driver.
+ */
 static void uart0_init(void)
 {
     uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
@@ -68,7 +74,7 @@ static esp_err_t set_config(nvs_handle_t handle, const char *key, const char *va
     return err;
 }
 
-static void echo_task(void *param)
+static void command_loop_task(void *param)
 {
     uart0_init();
 
@@ -81,7 +87,10 @@ static void echo_task(void *param)
 
     while (1)
     {
-        printf("Write something:\n");
+        char ipaddr[32] = "";
+
+        get_ip_addr(ipaddr, sizeof(ipaddr));
+        printf("%s%sEnter command:\n", ipaddr, *ipaddr ? " " : "");
         char buf[60] = "";
         my_fgets(buf, sizeof(buf) - 1, fileno(stdin));
         buf[sizeof(buf) - 1] = '\0';
@@ -116,6 +125,29 @@ static void echo_task(void *param)
         } else if (strncmp(buf, "set passwd", 10) == 0) {
             rtrim(buf, sizeof(buf));
             set_config(handle, "wifi-passwd", &buf[11]);
+        } else if (strncmp(buf, "wifistart", 9) == 0) {
+            char passwd[60] = "";
+            size_t passwd_length = sizeof(passwd);
+            char ssid[32] = "";
+            size_t ssid_length = sizeof(ssid);
+
+            err = nvs_get_str(handle, "wifi-passwd", passwd, &passwd_length);
+            if (err == ESP_OK) {
+                err = nvs_get_str(handle, "wifi-ssid", ssid, &ssid_length);
+                if (err == ESP_OK) {
+                    printf("Attempting Wifi connection to %s...\n", ssid);
+                    wifi_init_sta(ssid, passwd);
+                }
+            }
+            if (err != ESP_OK) {
+                printf("Wifi not configured.\n");
+            }
+        } else if (strncmp(buf, "wifistop", 8) == 0) {
+
+            err = esp_wifi_stop();
+            if (err != ESP_OK) {
+                printf("Failed to stop wifi: %s\n", esp_err_to_name(err));
+            }
         } else if (strncmp(buf, "quit", 4) == 0) {
             printf("Quitting for testing deinit code...\n");
             break;
@@ -155,5 +187,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
 
-    xTaskCreate(echo_task, "echo_task", 4*1024, NULL, 5, NULL);
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    xTaskCreate(command_loop_task, "command_loop", 4*1024, NULL, 5, NULL);
 }

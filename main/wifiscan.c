@@ -2,7 +2,7 @@
 // Created by Sami Lehtinen on 15.6.2020.
 //
 
-#include "wifi.h"
+#include "wifiscan.h"
 
 /* Scan Example
 
