@@ -1,6 +1,4 @@
-//
-// Created by Sami Lehtinen on 15.6.2020.
-//
+// Lifted from the udp server example.
 
 #include "udpserver.h"
 
