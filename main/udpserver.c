@@ -13,6 +13,8 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 #include <sys/param.h>
+#include <pb_decode.h>
+#include "RobotSystemCommunication.pb.h"
 
 #define PORT 50052
 
@@ -20,7 +22,7 @@ static const char *TAG = "udp server";
 
 void udp_server()
 {
-    char rx_buffer[128];
+    unsigned char rx_buffer[128];
     char addr_str[128];
     int addr_family;
     int ip_protocol;
@@ -83,15 +85,30 @@ void udp_server()
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
                 ESP_LOGI(TAG, "%s", rx_buffer);
 
-                memmove(rx_buffer + 5, rx_buffer, MIN(len, sizeof(rx_buffer) - 5));
-                memmove(rx_buffer, "pong ", 5);
+                {
+                    robotsystemcommunication_RobotActionRequest req =
+                            robotsystemcommunication_RobotActionRequest_init_zero;
+                    pb_istream_t stream = pb_istream_from_buffer(rx_buffer, len);
 
-                int err = sendto(sock, rx_buffer, MIN(len, sizeof(rx_buffer) - 5) + 5, 0,
-                        (struct sockaddr *)&source_addr, sizeof(source_addr));
-                if (err < 0) {
-                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                    break;
+                    bool status;
+                    status = pb_decode(&stream, robotsystemcommunication_RobotActionRequest_fields, &req);
+
+                    if (!status) {
+                        printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
+                    } else {
+                        printf("Got action request: %d %d\n", req.leftMotorAction, req.rightMotorAction);
+                    }
                 }
+
+//                memmove(rx_buffer + 5, rx_buffer, MIN(len, sizeof(rx_buffer) - 5));
+//                memmove(rx_buffer, "pong ", 5);
+
+//                int err = sendto(sock, rx_buffer, MIN(len, sizeof(rx_buffer) - 5) + 5, 0,
+//                        (struct sockaddr *)&source_addr, sizeof(source_addr));
+//                if (err < 0) {
+//                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+//                    break;
+//                }
             }
         }
 
