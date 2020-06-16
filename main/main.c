@@ -146,6 +146,12 @@ static void command_loop_task(void *param)
     TaskHandle_t udp_server_handle = NULL;
     bool wifi_started = false;
 
+    /* If configuration is ok, try to start services automatically. */
+    wifi_started = start_wifi(handle);
+    if (wifi_started) {
+        start_udp_server(&udp_server_handle);
+    }
+
     while (1)
     {
         // TODO: Add MAC address of the WiFi as well.
@@ -162,6 +168,10 @@ static void command_loop_task(void *param)
         if (strncmp(buf, "scan", 4) == 0) {
             wifi_scan();
         } else if (strncmp(buf, "query", 5) == 0) {
+            printf("** Status:\n\n");
+            printf("Wifi %srunning\n", wifi_started ? "" : "not ");
+            printf("UDP server %srunning\n", udp_server_handle != NULL ? "" : "not ");
+            printf("\n** Config:\n\n");
             char string[40] = "";
             size_t string_length = sizeof(string);
             err = nvs_get_str(handle, "wifi-ssid", string, &string_length);
