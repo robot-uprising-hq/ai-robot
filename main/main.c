@@ -82,6 +82,39 @@ static void udp_server_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+static bool start_wifi(nvs_handle_t handle)
+{
+    esp_err_t err;
+    char passwd[60] = "";
+    size_t passwd_length = sizeof(passwd);
+    char ssid[32] = "";
+    size_t ssid_length = sizeof(ssid);
+
+    err = nvs_get_str(handle, "wifi-passwd", passwd, &passwd_length);
+    if (err == ESP_OK) {
+        err = nvs_get_str(handle, "wifi-ssid", ssid, &ssid_length);
+        if (err == ESP_OK) {
+            printf("Attempting Wifi connection to %s...\n", ssid);
+            wifi_init_sta(ssid, passwd);
+            return true;
+        }
+    }
+    if (err != ESP_OK) {
+        printf("Wifi not configured.\n");
+    }
+    return false;
+}
+
+static bool start_udp_server(TaskHandle_t *udp_server_handle)
+{
+    BaseType_t ret = xTaskCreate(udp_server_task, "udp_server", 4 * 1024, NULL, 5, udp_server_handle);
+    if (ret != pdPASS) {
+        printf("Error creating task: %d\n", ret);
+        return false;
+    }
+    return true;
+}
+
 const char *help_text =
 "Command loop help\n"\
 "\n"\
@@ -94,6 +127,7 @@ const char *help_text =
 "query all           Show all configuration, including passwords.\n"\
 "set ssid SSID       Set WiFi AP to use to SSID.\n"\
 "set passwd PASSWD   Set Wifi password to PASSWD.\n"\
+"udpsrvstart         Start UDP server.\n"\
 "wifistart           (Attempt to) start WiFi.\n"\
 "wifistop            Disconnect from WiFi.\n"\
 "quit                Exit command-loop (mainly for debugging).\n"
@@ -110,6 +144,7 @@ static void command_loop_task(void *param)
     }
 
     TaskHandle_t udp_server_handle = NULL;
+    bool wifi_started = false;
 
     while (1)
     {
@@ -156,28 +191,16 @@ static void command_loop_task(void *param)
         } else if (strncmp(buf, "help", 4) == 0) {
             printf(help_text);
         } else if (strncmp(buf, "wifistart", 9) == 0) {
-            char passwd[60] = "";
-            size_t passwd_length = sizeof(passwd);
-            char ssid[32] = "";
-            size_t ssid_length = sizeof(ssid);
-
-            err = nvs_get_str(handle, "wifi-passwd", passwd, &passwd_length);
-            if (err == ESP_OK) {
-                err = nvs_get_str(handle, "wifi-ssid", ssid, &ssid_length);
-                if (err == ESP_OK) {
-                    printf("Attempting Wifi connection to %s...\n", ssid);
-                    wifi_init_sta(ssid, passwd);
+            if (!wifi_started) {
+                if (start_wifi(handle)) {
+                    wifi_started = true;
                 }
+            } else {
+                printf("Wifi already started.\n");
             }
-            if (err != ESP_OK) {
-                printf("Wifi not configured.\n");
-            }
-        } else if (strncmp(buf, "udpserver", 9) == 0) {
+        } else if (strncmp(buf, "udpsrvstart", 11) == 0) {
             if (!udp_server_handle) {
-                 BaseType_t ret = xTaskCreate(udp_server_task, "udp_server", 4 * 1024, NULL, 5, &udp_server_handle);
-                 if (ret != pdPASS) {
-                     printf("Error creating task: %d\n", ret);
-                 }
+                start_udp_server(&udp_server_handle);
             } else {
                 printf("UDP server already running.\n");
             }
@@ -187,6 +210,7 @@ static void command_loop_task(void *param)
             if (err != ESP_OK) {
                 printf("Failed to stop wifi: %s\n", esp_err_to_name(err));
             }
+            wifi_started = false;
         } else if (strncmp(buf, "quit", 4) == 0) {
             printf("Quitting for testing deinit code...\n");
             break;
