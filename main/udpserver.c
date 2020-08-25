@@ -97,16 +97,6 @@ void udp_server()
                         printf("Got action request: %d %d\n", req.leftMotorAction, req.rightMotorAction);
                     }
                 }
-
-//                memmove(rx_buffer + 5, rx_buffer, MIN(len, sizeof(rx_buffer) - 5));
-//                memmove(rx_buffer, "pong ", 5);
-
-//                int err = sendto(sock, rx_buffer, MIN(len, sizeof(rx_buffer) - 5) + 5, 0,
-//                        (struct sockaddr *)&source_addr, sizeof(source_addr));
-//                if (err < 0) {
-//                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-//                    break;
-//                }
             }
         }
 
