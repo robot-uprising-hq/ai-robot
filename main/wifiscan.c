@@ -116,7 +116,7 @@ static void print_cipher_type(int pairwise_cipher, int group_cipher)
 void wifi_scan(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    //ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
     assert(sta_netif);
 
