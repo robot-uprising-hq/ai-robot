@@ -77,9 +77,16 @@ static esp_err_t set_config(nvs_handle_t handle, const char *key, const char *va
     return err;
 }
 
+void motor_action_cb(int left_motor_action, int right_motor_action)
+{
+    printf("Motor request: %d %d\n", left_motor_action, right_motor_action);
+    motor_set_speed(1, right_motor_action);
+    motor_set_speed(2, left_motor_action);
+}
+
 static void udp_server_task(void *pvParameters)
 {
-    udp_server();
+    udp_server(motor_action_cb);
     vTaskDelete(NULL);
 }
 

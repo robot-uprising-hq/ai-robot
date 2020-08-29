@@ -18,7 +18,7 @@
 
 static const char *TAG = "udp server";
 
-void udp_server()
+void udp_server(MotorActionCallback motor_action_cb)
 {
     unsigned char rx_buffer[128];
     char addr_str[128];
@@ -95,6 +95,9 @@ void udp_server()
                         printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
                     } else {
                         printf("Got action request: %d %d\n", req.leftMotorAction, req.rightMotorAction);
+                        if (motor_action_cb != NULL) {
+                            motor_action_cb(req.leftMotorAction, req.rightMotorAction);
+                        }
                     }
                 }
             }
