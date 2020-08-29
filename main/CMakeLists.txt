@@ -3,10 +3,10 @@
 #find_package(Nanopb REQUIRED)
 #include_directories(./nanopb)
 
-set(COMPONENT_REQUIRES nanopb motor_control)
+set(COMPONENT_REQUIRES motor_control udpcomm)
 set(COMPONENT_PRIV_REQUIRES nvs_flash)
 
-set(COMPONENT_SRCS "main.c console.c wifiscan.c wificonnect.c udpserver.c RobotSystemCommunication.pb.c")
+set(COMPONENT_SRCS "main.c console.c wifiscan.c wificonnect.c")
 set(COMPONENT_ADD_INCLUDEDIRS "")
 
 register_component()
