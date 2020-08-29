@@ -9,6 +9,16 @@
 #include "math.h"
 #include "stdio.h"
 
+// Pin definitions
+#define MOTOR_1_DIR_A   21
+#define MOTOR_1_DIR_B   23
+#define MOTOR_1_PWM     19
+
+#define MOTOR_2_DIR_A   25
+#define MOTOR_2_DIR_B   33
+#define MOTOR_2_PWM     32
+
+#define MOTOR_DIR_PIN_SEL ((1ULL<<MOTOR_1_DIR_A) | (1ULL<<MOTOR_1_DIR_B) | (1ULL<<MOTOR_2_DIR_A) | (1ULL<<MOTOR_2_DIR_B))
 
 float motor_1_pwm = 0;
 float motor_2_pwm = 0;
@@ -91,46 +101,4 @@ void motor_set_speed(int motor, float speed)
     mcpwm_set_duty(MCPWM_UNIT_0, timer, MCPWM_GEN_A, fabs(speed));
 
     printf("Motor %d set to %f speed.\n", motor, speed);
-}
-
-
-void motor_control_task(void *args)
-{
-    while (1)
-    {
-        // TODO: protect motor_x_pwm variables with mutexes
-        if (fabs(motor_1_pwm) > 100 || fabs(motor_2_pwm) > 100)
-        {
-            printf("ERROR: Motor duty cycle cannot exceed 100 \n"); // TODO: make this a proper error log
-            motor_1_pwm = 0;
-            motor_2_pwm = 0;
-        }
-        
-        if (motor_1_pwm < 0)
-        {
-            gpio_set_level(MOTOR_1_DIR_A, 1);
-            gpio_set_level(MOTOR_1_DIR_B, 0);
-        }
-        else
-        {
-            gpio_set_level(MOTOR_1_DIR_A, 0);
-            gpio_set_level(MOTOR_1_DIR_B, 1);
-        }
-        
-        if (motor_2_pwm < 0)
-        {
-            gpio_set_level(MOTOR_2_DIR_A, 1);
-            gpio_set_level(MOTOR_2_DIR_B, 0);
-        }
-        else
-        {
-            gpio_set_level(MOTOR_2_DIR_A, 0);
-            gpio_set_level(MOTOR_2_DIR_B, 1);
-        }
-
-        mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, fabs(motor_1_pwm));
-        mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_GEN_A, fabs(motor_2_pwm));
-        
-        vTaskDelay(10/portTICK_RATE_MS);
-    }
 }

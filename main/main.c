@@ -23,6 +23,7 @@
 #include "wifiscan.h"
 #include "wificonnect.h"
 #include "udpserver.h"
+#include "motor_control.h"
 
 static const char* TAG = "robotfrontend";
 
@@ -115,6 +116,66 @@ static bool start_udp_server(TaskHandle_t *udp_server_handle)
     return true;
 }
 
+void do_motor_test()
+{
+    printf("Starting motor test!\n");
+
+//    printf("***** Motor1 fwd, 75\n");
+//    motor_set_speed(1, 75);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//    motor_set_speed(1, 0);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//
+//    printf("***** Motor1 bwd, 75\n");
+//
+//    motor_set_speed(1, -75);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//    motor_set_speed(1, 0);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//
+//    printf("***** Motor2 fwd, 75\n");
+//    motor_set_speed(2, 75);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//    motor_set_speed(2, 0);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//
+//    printf("***** Motor2 bwd, 75\n");
+//    motor_set_speed(2, -75);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+//    motor_set_speed(2, 0);
+//    vTaskDelay(1000/portTICK_RATE_MS);
+
+    printf("***** Motor1 fwd 50, Motor2 bwd, 100\n");
+    motor_set_speed(1, 50);
+    motor_set_speed(2, -100);
+    vTaskDelay(10000/portTICK_RATE_MS);
+    motor_set_speed(1, 0);
+    motor_set_speed(2, 0);
+    vTaskDelay(1000/portTICK_RATE_MS);
+
+    printf("***** Motor1 bwd 100, Motor2 fwd, 50\n");
+    motor_set_speed(1, -100);
+    motor_set_speed(2, 50);
+    vTaskDelay(10000/portTICK_RATE_MS);
+    motor_set_speed(1, 0);
+    motor_set_speed(2, 0);
+    vTaskDelay(1000/portTICK_RATE_MS);
+
+    printf("***** Motor1&2 fwd, 100\n");
+    motor_set_speed(1, 100);
+    motor_set_speed(2, 100);
+    vTaskDelay(5000/portTICK_RATE_MS);
+    motor_set_speed(1, 0);
+    motor_set_speed(2, 0);
+
+    printf("***** Motor1&2 bwd, 100\n");
+    motor_set_speed(1, -100);
+    motor_set_speed(2, -100);
+    vTaskDelay(5000/portTICK_RATE_MS);
+    motor_set_speed(1, 0);
+    motor_set_speed(2, 0);
+}
+
 const char *help_text =
 "Command loop help\n"\
 "\n"\
@@ -130,6 +191,7 @@ const char *help_text =
 "udpsrvstart         Start UDP server.\n"\
 "wifistart           (Attempt to) start WiFi.\n"\
 "wifistop            Disconnect from WiFi.\n"\
+"motortest           Run simple test of the motors.\n"\
 "quit                Exit command-loop (mainly for debugging).\n"
 "\n";
 static void command_loop_task(void *param)
@@ -221,6 +283,8 @@ static void command_loop_task(void *param)
                 printf("Failed to stop wifi: %s\n", esp_err_to_name(err));
             }
             wifi_started = false;
+        } else if (strncmp(buf, "motortest", 9) == 0) {
+            do_motor_test();
         } else if (strncmp(buf, "quit", 4) == 0) {
             printf("Quitting for testing deinit code...\n");
             break;
@@ -261,6 +325,8 @@ void app_main(void)
     ESP_ERROR_CHECK( ret );
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    motor_control_setup();
 
     xTaskCreate(command_loop_task, "command_loop", 4*1024, NULL, 5, NULL);
 }

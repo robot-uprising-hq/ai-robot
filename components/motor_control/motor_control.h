@@ -1,20 +1,25 @@
+/*
+ * Motor control.
+ *
+ * Allows control of motors individually.
+ */
 
+#ifndef MOTOR_CONTROL_H_INCLUDED
+#define MOTOR_CONTROL_H_INCLUDED
 
-// Pin definitions
-#define MOTOR_1_DIR_A   21
-#define MOTOR_1_DIR_B   23
-#define MOTOR_1_PWM     19
+/*
+ * TODO: For convenience and safety, this module should also handle the shutting down of motor power if the motors
+ *       are not being guided. This will safeguard against network issues etc. This backoff timeout could be given as
+ *       a parameter to the setup function, for example, or be an argument to the motor_set_speed() function.
+ */
 
-#define MOTOR_2_DIR_A   25
-#define MOTOR_2_DIR_B   33
-#define MOTOR_2_PWM     32
-
-#define MOTOR_DIR_PIN_SEL ((1ULL<<MOTOR_1_DIR_A) | (1ULL<<MOTOR_1_DIR_B) | (1ULL<<MOTOR_2_DIR_A) | (1ULL<<MOTOR_2_DIR_B))
-
-extern float motor_1_pwm;
-extern float motor_2_pwm;
-
+/* Call this to setup all the necessary libraries and HW to enabled motor control. */
 void motor_control_setup();
-void motor_control_task(void *args);
 
+/*
+ * Set `motor` to run at `speed`. `motor` is either 1 or 2, and speed should be from -100 to 100, with negative
+ * running the motor backwards and positive forwards. Absolute value gives motor power, with 100 being the maximum.
+ */
 void motor_set_speed(int motor, float speed);
+
+#endif /* MOTOR_CONTROL_H_INCLUDED */
