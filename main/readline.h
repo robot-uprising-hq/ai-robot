@@ -8,6 +8,6 @@
 #include <sys/unistd.h>
 
 // Get characters until a newline is encountered or the buffer is filled.
-int my_fgets(char *buf, size_t buf_len, int fd);
+int readline(char *buf, size_t buf_len, int fd);
 
 #endif //ROBOT_FRONTEND_CONSOLE_H

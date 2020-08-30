@@ -2,7 +2,7 @@
 // Created by Sami Lehtinen on 15.6.2020.
 //
 
-#include "console.h"
+#include "readline.h"
 #include <sys/param.h>
 #include <sys/select.h>
 #include <stdio.h>
@@ -11,7 +11,7 @@
 
 static const char* TAG = "robotfrontend";
 
-int my_fgets(char *buf, size_t buf_len, int fd)
+int readline(char *buf, size_t buf_len, int fd)
 {
     int read_bytes = 0;
 

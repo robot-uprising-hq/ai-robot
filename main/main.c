@@ -19,7 +19,7 @@
 #include "nvs_flash.h"
 #include <ctype.h>
 #include "esp_wifi.h"
-#include "console.h"
+#include "readline.h"
 #include "wifiscan.h"
 #include "wificonnect.h"
 #include "udpserver.h"
@@ -230,7 +230,7 @@ static void command_loop_task(void *param)
         printf("%s%sEnter command:\n", ipaddr, *ipaddr ? " " : "");
 
         char buf[60] = "";
-        my_fgets(buf, sizeof(buf) - 1, fileno(stdin));
+        readline(buf, sizeof(buf) - 1, fileno(stdin));
         buf[sizeof(buf) - 1] = '\0';
         printf("\nYou wrote: %s\n", buf);
 
