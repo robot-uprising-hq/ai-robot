@@ -8,9 +8,9 @@
 #include "esp_system.h"
 
 /*
- * Connect to wifi. Should only be called from main loop once at a time.
+ * Connect to wifi. Should only be called from main loop once at a time. Returns `true` on success, `false` otherwise.
  */
-void wifi_init_sta(const char *ssid, const char *passwd);
+bool wifi_init_sta(const char *ssid, const char *passwd);
 
 /*
  * Get interface IP(v4) address.

@@ -46,7 +46,7 @@ typedef struct {
     int pwm_frequency;
 } MotorControlConfig;
 
-#define MotorControlConfig_zero {0, 1000};
+#define MotorControlConfig_zero {CONFIG_MC_DEFAULT_HARD_TIMEOUT, CONFIG_MC_DEFAULT_PWM_FREQ};
 
 /*
  * Call this to setup all the necessary libraries and HW to enable motor control. If you are setting this, please use

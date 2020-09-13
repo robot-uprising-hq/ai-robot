@@ -1,0 +1,15 @@
+menu "MicroInvaders motor config"
+config MC_DEFAULT_PWM_FREQ
+    int "Default PWM frequency"
+    default 1000
+    help
+    	Default PWM frequency to use in motor control.
+
+config MC_DEFAULT_HARD_TIMEOUT
+    int "Default hard timeout"
+    default 3000
+    help
+    	Default hard timeout for motor actions, in milliseconds.
+
+endmenu
+

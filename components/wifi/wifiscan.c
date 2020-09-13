@@ -23,9 +23,9 @@
 #include "esp_log.h"
 #include "esp_event.h"
 
-#define DEFAULT_SCAN_LIST_SIZE CONFIG_EXAMPLE_SCAN_LIST_SIZE
+#define DEFAULT_SCAN_LIST_SIZE CONFIG_WIFI_SCAN_LIST_SIZE
 
-static const char *TAG = "scan";
+static const char *TAG = "wifiscan";
 
 static void print_auth_mode(int authmode)
 {

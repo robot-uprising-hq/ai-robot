@@ -115,16 +115,24 @@ static bool start_wifi(nvs_handle_t handle)
     size_t ssid_length = sizeof(ssid);
 
     err = nvs_get_str(handle, "wifi-passwd", passwd, &passwd_length);
-    if (err == ESP_OK) {
-        err = nvs_get_str(handle, "wifi-ssid", ssid, &ssid_length);
-        if (err == ESP_OK) {
-            printf("Attempting Wifi connection to %s...\n", ssid);
-            wifi_init_sta(ssid, passwd);
+    if (err != ESP_OK) {
+#ifdef CONFIG_WIFI_PASSWORD
+        strncpy(passwd, CONFIG_WIFI_PASSWORD, sizeof(passwd) - 1);
+#endif /* CONFIG_WIFI_PASSWORD */
+    }
+    err = nvs_get_str(handle, "wifi-ssid", ssid, &ssid_length);
+    if (err != ESP_OK) {
+#ifdef CONFIG_WIFI_SSID
+        strncpy(ssid, CONFIG_WIFI_SSID, sizeof(ssid) - 1);
+#endif /* CONFIG_WIFI_SSID */
+    }
+    if (strlen(ssid) > 0) {
+        printf("Attempting Wifi connection to %s...\n", ssid);
+        if (wifi_init_sta(ssid, passwd)) {
             led_control_activate(LED_WIFI, 0);
             return true;
         }
-    }
-    if (err != ESP_OK) {
+    } else {
         printf("Wifi not configured.\n");
     }
     return false;
@@ -323,7 +331,6 @@ static void command_loop_task(void *param)
             } else {
                 printf("wifi-ssid: \"%s\"\n", string);
             }
-
             string_length = sizeof(string);
             err = nvs_get_str(handle, "wifi-passwd", string, &string_length);
             if (err != ESP_OK) {
@@ -335,6 +342,12 @@ static void command_loop_task(void *param)
                     printf("wifi-passwd: <is set>\n");
                 }
             }
+#ifdef CONFIG_WIFI_SSID
+            printf("Default wifi-ssid: \"%s\"\n", CONFIG_WIFI_SSID);
+#endif
+#ifdef CONFIG_WIFI_PASSWORD
+            printf("Defaut wifi-passwd: <is set>\n");
+#endif
             dump_key_int(handle, "mc-hard-timeout");
             dump_key_int(handle, "mc-pwm-freq");
         } else if (strncmp(buf, "set ssid", 8) == 0) {

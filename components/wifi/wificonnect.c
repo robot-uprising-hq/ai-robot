@@ -29,7 +29,7 @@
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
-#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
+#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_WIFI_MAXIMUM_RETRY
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -40,7 +40,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "wifi station";
+static const char *TAG = "wifi_connect";
 
 static int s_retry_num = 0;
 
@@ -85,7 +85,7 @@ esp_err_t get_ip_addr(char *buf, size_t buf_len)
 /*
  * Connect to wifi. Should only be called from main loop once at a time.
  */
-void wifi_init_sta(const char *ssid, const char *passwd)
+bool wifi_init_sta(const char *ssid, const char *passwd)
 {
     s_wifi_event_group = xEventGroupCreate();
 
@@ -143,8 +143,10 @@ void wifi_init_sta(const char *ssid, const char *passwd)
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
+    bool ret = false;
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:%s", ssid);
+        ret = true;
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", ssid);
         /* This seems to be necessary to have a successful reconnect. */
@@ -157,4 +159,5 @@ void wifi_init_sta(const char *ssid, const char *passwd)
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
     vEventGroupDelete(s_wifi_event_group);
+    return ret;
 }
