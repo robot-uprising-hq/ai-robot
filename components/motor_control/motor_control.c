@@ -6,6 +6,9 @@
 #include "driver/gpio.h"
 #include "driver/mcpwm.h" 
 
+#include "esp_log.h"
+#include "esp_timer.h"
+
 #include "math.h"
 #include "stdio.h"
 
@@ -20,8 +23,13 @@
 
 #define MOTOR_DIR_PIN_SEL ((1ULL<<MOTOR_1_DIR_A) | (1ULL<<MOTOR_1_DIR_B) | (1ULL<<MOTOR_2_DIR_A) | (1ULL<<MOTOR_2_DIR_B))
 
-float motor_1_pwm = 0;
-float motor_2_pwm = 0;
+/* Global config. */
+MotorControlConfig motor_control_config = MotorControlConfig_zero;
+
+esp_timer_handle_t motor1_timeout_timer;
+esp_timer_handle_t motor2_timeout_timer;
+
+static const char *TAG = "motor_control";
 
 void gpio_init()
 {
@@ -51,9 +59,11 @@ void pwm_gpio_config()
 void mcpwm_config()
 {
     printf("MCPWM init\n");
+    printf("MCPWM pwm freq: %d\n", motor_control_config.pwm_frequency);
+    printf("MCPWM hard timeout: %d\n", motor_control_config.hard_timeout);
     mcpwm_config_t pwm_config;
     
-    pwm_config.frequency = 1000;    //frequency = 1000Hz
+    pwm_config.frequency = motor_control_config.pwm_frequency;    //frequency in Hz
     pwm_config.cmpr_a = 0.0;       // initial duty cycle 0
     pwm_config.cmpr_b = 0.0;       // initial duty cycle 0
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
@@ -63,17 +73,58 @@ void mcpwm_config()
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_1, &pwm_config);
 }
 
-void motor_control_setup()
+/* Forward declaration. */
+void motor_control_stop_motor_callback(void *arg);
+
+esp_err_t motor_control_setup(MotorControlConfig *config)
 {
+    if (config != NULL) {
+        motor_control_config = *config;
+    }
     gpio_init();
     pwm_gpio_config();
     mcpwm_config();
+
+    esp_err_t err;
+    esp_timer_create_args_t timer_config = {};
+    timer_config.callback = motor_control_stop_motor_callback;
+    timer_config.arg = (void *)1;
+    timer_config.dispatch_method = ESP_TIMER_TASK;
+    timer_config.name = "motor_time_1";
+    err = esp_timer_create(&timer_config, &motor1_timeout_timer);
+    if (err != ESP_OK) {
+        return err;
+    }
+    timer_config.arg = (void *)2;
+    timer_config.name = "motor_time_2";
+
+    err = esp_timer_create(&timer_config, &motor2_timeout_timer);
+    if (err != ESP_OK) {
+        esp_timer_delete(motor1_timeout_timer);
+        return err;
+    }
+    return ESP_OK;
 }
 
-void motor_set_speed(int motor, float speed)
+void motor_control_deinit()
+{
+    // Allocated resources should be freed here, and initialized resources deinitialized.
+    esp_timer_stop(motor1_timeout_timer);
+    esp_timer_delete(motor1_timeout_timer);
+    esp_timer_stop(motor2_timeout_timer);
+    esp_timer_delete(motor2_timeout_timer);
+}
+
+void motor_control_set_hard_timeout(int hard_timeout)
+{
+    motor_control_config.hard_timeout = hard_timeout;
+}
+
+void motor_set_speed(int motor, float speed, int timeout)
 {
     int level_a = 0, level_b = 0;
     int dir_a_pin = 0, dir_b_pin = 0, timer = 0;
+    esp_timer_handle_t *stop_timer_handle = NULL;
 
     if (speed == 0) {
         level_a = 0;
@@ -90,15 +141,49 @@ void motor_set_speed(int motor, float speed)
         dir_a_pin = MOTOR_1_DIR_A;
         dir_b_pin = MOTOR_1_DIR_B;
         timer = MCPWM_TIMER_0;
+        stop_timer_handle = &motor1_timeout_timer;
     } else if (motor == 2) {
         dir_a_pin = MOTOR_2_DIR_A;
         dir_b_pin = MOTOR_2_DIR_B;
         timer = MCPWM_TIMER_1;
+        stop_timer_handle = &motor2_timeout_timer;
     }
     gpio_set_level(dir_a_pin, level_a);
     gpio_set_level(dir_b_pin, level_b);
 
+    esp_timer_stop(*stop_timer_handle);
+
     mcpwm_set_duty(MCPWM_UNIT_0, timer, MCPWM_GEN_A, fabs(speed));
 
+    int calc_timeout = timeout;
+    /* Cap the timeout to the hard timeout. */
+    if (motor_control_config.hard_timeout > 0) {
+        if (calc_timeout > motor_control_config.hard_timeout) {
+            calc_timeout = motor_control_config.hard_timeout;
+        }
+    }
+    if (calc_timeout > 0 && fabs(speed) > 0) {
+        esp_err_t err;
+        err = esp_timer_start_once(*stop_timer_handle, calc_timeout * 1000);
+        ESP_ERROR_CHECK(err); // this should never fail.
+    }
+
     printf("Motor %d set to %f speed.\n", motor, speed);
+}
+
+void motor_control_stop_motor_callback(void *arg)
+{
+    int timer = -1;
+    int motor = (int)arg;
+    if (motor == 1) {
+        timer = MCPWM_TIMER_0;
+    } else if (motor == 2) {
+        timer = MCPWM_TIMER_1;
+    }
+    if (timer != -1) {
+        ESP_LOGI(TAG, "Stopped motor %d.", motor);
+        mcpwm_set_duty(MCPWM_UNIT_0, timer, MCPWM_GEN_A, 0);
+    } else {
+        ESP_LOGE(TAG, "Invalid motor value %d.", motor);
+    }
 }

@@ -72,16 +72,31 @@ static esp_err_t set_config(nvs_handle_t handle, const char *key, const char *va
         if (err != ESP_OK) {
             printf("Commit failed after writing key: %s\n", esp_err_to_name(err));
         }
-        printf("Wrote %s.", key);
+        printf("Wrote %s.\n", key);
     }
     return err;
 }
 
-void motor_action_cb(int left_motor_action, int right_motor_action)
+static esp_err_t set_config_int(nvs_handle_t handle, const char *key, int val)
 {
-    printf("Motor request: %d %d\n", left_motor_action, right_motor_action);
-    motor_set_speed(1, right_motor_action);
-    motor_set_speed(2, left_motor_action);
+    esp_err_t err = nvs_set_i32(handle, key, val);
+    if (err != ESP_OK) {
+        printf("Failed to write key: %s\n", esp_err_to_name(err));
+    } else {
+        err = nvs_commit(handle);
+        if (err != ESP_OK) {
+            printf("Commit failed after writing key: %s\n", esp_err_to_name(err));
+        }
+        printf("Wrote %s.\n", key);
+    }
+    return err;
+}
+
+void motor_action_cb(int left_motor_action, int right_motor_action, int timeout)
+{
+    printf("Motor request: %d %d %d\n", left_motor_action, right_motor_action, timeout);
+    motor_set_speed(1, right_motor_action, timeout);
+    motor_set_speed(2, left_motor_action, timeout);
 }
 
 static void udp_server_task(void *pvParameters)
@@ -117,7 +132,7 @@ static bool start_udp_server(TaskHandle_t *udp_server_handle)
 {
     BaseType_t ret = xTaskCreate(udp_server_task, "udp_server", 4 * 1024, NULL, 5, udp_server_handle);
     if (ret != pdPASS) {
-        printf("Error creating task: %d\n", ret);
+        ESP_LOGE(TAG, "Error creating task: %d", ret);
         return false;
     }
     return true;
@@ -153,34 +168,65 @@ void do_motor_test()
 //    vTaskDelay(1000/portTICK_RATE_MS);
 
     printf("***** Motor1 fwd 50, Motor2 bwd, 100\n");
-    motor_set_speed(1, 50);
-    motor_set_speed(2, -100);
+    motor_set_speed(1, 50, 0);
+    motor_set_speed(2, -100, 0);
     vTaskDelay(10000/portTICK_RATE_MS);
-    motor_set_speed(1, 0);
-    motor_set_speed(2, 0);
+    motor_set_speed(1, 0, 0);
+    motor_set_speed(2, 0, 0);
     vTaskDelay(1000/portTICK_RATE_MS);
 
     printf("***** Motor1 bwd 100, Motor2 fwd, 50\n");
-    motor_set_speed(1, -100);
-    motor_set_speed(2, 50);
+    motor_set_speed(1, -100, 0);
+    motor_set_speed(2, 50, 0);
     vTaskDelay(10000/portTICK_RATE_MS);
-    motor_set_speed(1, 0);
-    motor_set_speed(2, 0);
+    motor_set_speed(1, 0, 0);
+    motor_set_speed(2, 0, 0);
     vTaskDelay(1000/portTICK_RATE_MS);
 
     printf("***** Motor1&2 fwd, 100\n");
-    motor_set_speed(1, 100);
-    motor_set_speed(2, 100);
+    motor_set_speed(1, 100, 0);
+    motor_set_speed(2, 100, 0);
     vTaskDelay(5000/portTICK_RATE_MS);
-    motor_set_speed(1, 0);
-    motor_set_speed(2, 0);
+    motor_set_speed(1, 0, 0);
+    motor_set_speed(2, 0, 0);
 
     printf("***** Motor1&2 bwd, 100\n");
-    motor_set_speed(1, -100);
-    motor_set_speed(2, -100);
+    motor_set_speed(1, -100, 0);
+    motor_set_speed(2, -100, 0);
     vTaskDelay(5000/portTICK_RATE_MS);
-    motor_set_speed(1, 0);
-    motor_set_speed(2, 0);
+    motor_set_speed(1, 0, 0);
+    motor_set_speed(2, 0, 0);
+}
+
+/*
+ * Return `true` if buf is prefixed with `string`, `false` otherwise. `string` needs to be nul-terminated. If `rest` is
+ * not null, it will be set to point to the character right after the prefix.
+ */
+static bool has_prefix(const char *buf, size_t buf_len, const char *string, const char **rest)
+{
+    if (buf_len < strlen(string)) {
+        return false;
+    }
+
+    bool ret = strncmp(buf, string, strlen(string)) == 0;
+
+    if (ret && rest != NULL) {
+        *rest = &buf[strlen(string)];
+    }
+    return ret;
+}
+
+static void dump_key_int(nvs_handle_t handle, const char *key)
+{
+    int int_value = 0;
+    esp_err_t err;
+
+    err = nvs_get_i32(handle, key, &int_value);
+    if (err != ESP_OK) {
+        printf("Failed to get %s: %s\n", key, esp_err_to_name(err));
+    } else {
+        printf("%s: %d\n", key, int_value);
+    }
 }
 
 const char *help_text =
@@ -195,6 +241,10 @@ const char *help_text =
 "query all           Show all configuration, including passwords.\n"\
 "set ssid SSID       Set WiFi AP to use to SSID.\n"\
 "set passwd PASSWD   Set Wifi password to PASSWD.\n"\
+"set mc-hard-timeout MS\n"\
+"                    Set motor hard timeout to MS milliseconds. (see motor_control.h)\n"\
+"set mc-pwm-frequency FREQ\n"\
+"                    Set motor PWM frequency to FREQ. (see motor_control.h)\n"\
 "udpsrvstart         Start UDP server.\n"\
 "wifistart           (Attempt to) start WiFi.\n"\
 "wifistop            Disconnect from WiFi.\n"\
@@ -215,26 +265,43 @@ static void command_loop_task(void *param)
     TaskHandle_t udp_server_handle = NULL;
     bool wifi_started = false;
 
+
     /* If configuration is ok, try to start services automatically. */
     wifi_started = start_wifi(handle);
     if (wifi_started) {
         start_udp_server(&udp_server_handle);
     }
 
+    {
+        MotorControlConfig config = MotorControlConfig_zero;
+        int int_value;
+        err = nvs_get_i32(handle, "mc-hard-timeout", &int_value);
+        if (err == ESP_OK) {
+            config.hard_timeout = int_value;
+        }
+        err = nvs_get_i32(handle, "mc-pwm-freq", &int_value);
+        if (err == ESP_OK) {
+            config.pwm_frequency = int_value;
+        }
+        ESP_ERROR_CHECK(motor_control_setup(&config));
+    }
+
     while (1)
     {
         // TODO: Add MAC address of the WiFi as well.
         char ipaddr[32] = "";
+        const char *rest;
 
         get_ip_addr(ipaddr, sizeof(ipaddr));
         printf("%s%sEnter command:\n", ipaddr, *ipaddr ? " " : "");
 
         char buf[60] = "";
+        size_t buf_len = sizeof(buf) - 1;
         readline(buf, sizeof(buf) - 1, fileno(stdin));
         buf[sizeof(buf) - 1] = '\0';
         printf("\nYou wrote: %s\n", buf);
 
-        if (strncmp(buf, "scan", 4) == 0) {
+        if (has_prefix(buf, buf_len, "scan", NULL)) {
             wifi_scan();
         } else if (strncmp(buf, "query", 5) == 0) {
             printf("** Status:\n\n");
@@ -261,12 +328,23 @@ static void command_loop_task(void *param)
                     printf("wifi-passwd: <is set>\n");
                 }
             }
+            dump_key_int(handle, "mc-hard-timeout");
+            dump_key_int(handle, "mc-pwm-freq");
         } else if (strncmp(buf, "set ssid", 8) == 0) {
             rtrim(buf, sizeof(buf));
             set_config(handle, "wifi-ssid", &buf[9]);
         } else if (strncmp(buf, "set passwd", 10) == 0) {
             rtrim(buf, sizeof(buf));
             set_config(handle, "wifi-passwd", &buf[11]);
+        } else if (has_prefix(buf, buf_len, "set mc-hard-timeout", &rest)) {
+            rtrim(buf, sizeof(buf));
+            set_config_int(handle, "mc-hard-timeout", atoi(rest));
+        } else if (has_prefix(buf, buf_len, "set mc-pwm-freq", &rest)) {
+            rtrim(buf, sizeof(buf));
+            int new_value = atoi(rest);
+            set_config_int(handle, "mc-pwm-freq", new_value);
+            motor_control_set_hard_timeout(new_value);
+            printf("*** note: changing PWM frequency requires a reset of the robot to take effect.\n");
         } else if (strncmp(buf, "help", 4) == 0) {
             printf(help_text);
         } else if (strncmp(buf, "wifistart", 9) == 0) {
@@ -295,9 +373,12 @@ static void command_loop_task(void *param)
         } else if (strncmp(buf, "quit", 4) == 0) {
             printf("Quitting for testing deinit code...\n");
             break;
+        } else {
+            printf("Unknown command: %s", buf);
         }
     }
 
+    motor_control_deinit();
     nvs_close(handle);
     uart0_deinit();
     vTaskDelete(NULL);
@@ -332,8 +413,6 @@ void app_main(void)
     ESP_ERROR_CHECK( ret );
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    motor_control_setup();
 
     xTaskCreate(command_loop_task, "command_loop", 4*1024, NULL, 5, NULL);
 }

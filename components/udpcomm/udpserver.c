@@ -12,11 +12,11 @@
 #include <lwip/netdb.h>
 #include <sys/param.h>
 #include <pb_decode.h>
-#include "RobotSystemCommunication.pb.h"
+#include "proto/RobotSystemCommunication.pb.h"
 
 #define PORT 50052
 
-static const char *TAG = "udp server";
+static const char *TAG = "udpsrv";
 
 void udp_server(MotorActionCallback motor_action_cb)
 {
@@ -55,6 +55,7 @@ void udp_server(MotorActionCallback motor_action_cb)
         int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
         if (err < 0) {
             ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+            break;
         }
         ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
@@ -84,20 +85,29 @@ void udp_server(MotorActionCallback motor_action_cb)
                 ESP_LOGI(TAG, "%s", rx_buffer);
 
                 {
-                    robotsystemcommunication_RobotActionRequest req =
-                            robotsystemcommunication_RobotActionRequest_init_zero;
+                    robotsystemcommunication_RobotRequest req =
+                            robotsystemcommunication_RobotRequest_init_zero;
                     pb_istream_t stream = pb_istream_from_buffer(rx_buffer, len);
 
                     bool status;
-                    status = pb_decode(&stream, robotsystemcommunication_RobotActionRequest_fields, &req);
+                    status = pb_decode(&stream, robotsystemcommunication_RobotRequest_fields, &req);
 
                     if (!status) {
-                        printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
+                        ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream));
                     } else {
-                        printf("Got action request: %d %d\n", req.leftMotorAction, req.rightMotorAction);
-                        if (motor_action_cb != NULL) {
-                            motor_action_cb(req.leftMotorAction, req.rightMotorAction);
+                        ESP_LOGI(TAG, "Got request type: %d", req.which_req);
+                        if (req.which_req == robotsystemcommunication_RobotRequest_act_tag) {
+                            ESP_LOGI(TAG, "Got action request: %d %d %d", req.req.act.leftMotorAction,
+                                    req.req.act.rightMotorAction, req.req.act.actionTimeout);
+                            if (motor_action_cb != NULL) {
+                                motor_action_cb(req.req.act.leftMotorAction, req.req.act.rightMotorAction,
+                                                req.req.act.actionTimeout);
+                            }
+                        } else if (req.which_req == robotsystemcommunication_RobotRequest_ping_tag) {
+                            ESP_LOGI(TAG, "Got ping request");
                         }
+
+                        // TODO: send response
                     }
                 }
             }
