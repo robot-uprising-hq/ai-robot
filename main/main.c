@@ -24,6 +24,7 @@
 #include "wificonnect.h"
 #include "udpserver.h"
 #include "motor_control.h"
+#include "led_control.h"
 
 static const char* TAG = "robotfrontend";
 
@@ -119,6 +120,7 @@ static bool start_wifi(nvs_handle_t handle)
         if (err == ESP_OK) {
             printf("Attempting Wifi connection to %s...\n", ssid);
             wifi_init_sta(ssid, passwd);
+            led_control_activate(LED_WIFI, 0);
             return true;
         }
     }
@@ -249,6 +251,9 @@ const char *help_text =
 "wifistart           (Attempt to) start WiFi.\n"\
 "wifistop            Disconnect from WiFi.\n"\
 "motortest           Run simple test of the motors.\n"\
+"led-test wifi       Turn \"wifi\" led on for 2 seconds.\n"\
+"led-test server     Turn \"server\" led on for 2 seconds.\n"\
+"led-test activity   Turn \"activity\" led on for 2 seconds.\n"\
 "quit                Exit command-loop (mainly for debugging).\n"
 "\n";
 static void command_loop_task(void *param)
@@ -285,6 +290,8 @@ static void command_loop_task(void *param)
         }
         ESP_ERROR_CHECK(motor_control_setup(&config));
     }
+
+    ESP_ERROR_CHECK(led_control_setup());
 
     while (1)
     {
@@ -345,6 +352,20 @@ static void command_loop_task(void *param)
             set_config_int(handle, "mc-pwm-freq", new_value);
             motor_control_set_hard_timeout(new_value);
             printf("*** note: changing PWM frequency requires a reset of the robot to take effect.\n");
+        } else if (has_prefix(buf, buf_len, "led-test ", &rest)) {
+            rtrim(buf, sizeof(buf));
+            LedControlLed led;
+            if (strcmp(rest, "wifi") == 0) {
+                led = LED_WIFI;
+            } else if ((strcmp(rest, "server") == 0)) {
+                led = LED_SERVER;
+            } else if ((strcmp(rest, "activity") == 0)) {
+                led = LED_ACTIVITY;
+            } else {
+                printf("Unknown command: %s", buf);
+                continue;
+            }
+            led_control_activate(led, 2000);
         } else if (strncmp(buf, "help", 4) == 0) {
             printf(help_text);
         } else if (strncmp(buf, "wifistart", 9) == 0) {
@@ -368,6 +389,7 @@ static void command_loop_task(void *param)
                 printf("Failed to stop wifi: %s\n", esp_err_to_name(err));
             }
             wifi_started = false;
+            led_control_deactivate(LED_WIFI);
         } else if (strncmp(buf, "motortest", 9) == 0) {
             do_motor_test();
         } else if (strncmp(buf, "quit", 4) == 0) {
@@ -378,6 +400,7 @@ static void command_loop_task(void *param)
         }
     }
 
+    led_control_deinit();
     motor_control_deinit();
     nvs_close(handle);
     uart0_deinit();

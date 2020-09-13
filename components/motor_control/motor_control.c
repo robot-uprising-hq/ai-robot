@@ -12,6 +12,8 @@
 #include "math.h"
 #include "stdio.h"
 
+#include "led_control.h"
+
 // Pin definitions
 #define MOTOR_1_DIR_A   21
 #define MOTOR_1_DIR_B   23
@@ -31,7 +33,7 @@ esp_timer_handle_t motor2_timeout_timer;
 
 static const char *TAG = "motor_control";
 
-void gpio_init()
+static void mc_gpio_init()
 {
     printf("Motor control GPIO init\n");
     gpio_config_t io_conf;
@@ -81,7 +83,7 @@ esp_err_t motor_control_setup(MotorControlConfig *config)
     if (config != NULL) {
         motor_control_config = *config;
     }
-    gpio_init();
+    mc_gpio_init();
     pwm_gpio_config();
     mcpwm_config();
 
@@ -108,7 +110,7 @@ esp_err_t motor_control_setup(MotorControlConfig *config)
 
 void motor_control_deinit()
 {
-    // Allocated resources should be freed here, and initialized resources deinitialized.
+    // Allocated resources should be freed here, and initialized resources de-initialized.
     esp_timer_stop(motor1_timeout_timer);
     esp_timer_delete(motor1_timeout_timer);
     esp_timer_stop(motor2_timeout_timer);
@@ -118,6 +120,16 @@ void motor_control_deinit()
 void motor_control_set_hard_timeout(int hard_timeout)
 {
     motor_control_config.hard_timeout = hard_timeout;
+}
+
+void update_led_state()
+{
+    if (mcpwm_get_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A) > 0 ||
+        mcpwm_get_duty(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_GEN_A)){
+        led_control_activate(LED_ACTIVITY, 0);
+    } else {
+        led_control_deactivate(LED_ACTIVITY);
+    }
 }
 
 void motor_set_speed(int motor, float speed, int timeout)
@@ -168,21 +180,16 @@ void motor_set_speed(int motor, float speed, int timeout)
         ESP_ERROR_CHECK(err); // this should never fail.
     }
 
+    update_led_state();
     printf("Motor %d set to %f speed.\n", motor, speed);
 }
 
 void motor_control_stop_motor_callback(void *arg)
 {
-    int timer = -1;
     int motor = (int)arg;
-    if (motor == 1) {
-        timer = MCPWM_TIMER_0;
-    } else if (motor == 2) {
-        timer = MCPWM_TIMER_1;
-    }
-    if (timer != -1) {
+    if (motor == 1 || motor == 2) {
         ESP_LOGI(TAG, "Stopped motor %d.", motor);
-        mcpwm_set_duty(MCPWM_UNIT_0, timer, MCPWM_GEN_A, 0);
+        motor_set_speed(motor, 0, 0);
     } else {
         ESP_LOGE(TAG, "Invalid motor value %d.", motor);
     }
