@@ -15,8 +15,9 @@ extern "C" {
 
 /* Enum definitions */
 typedef enum _robotsystemcommunication_StatusType {
-    robotsystemcommunication_StatusType_OK = 0,
-    robotsystemcommunication_StatusType_ERROR = 1
+    robotsystemcommunication_StatusType_UNKNOWN = 0,
+    robotsystemcommunication_StatusType_OK = 1,
+    robotsystemcommunication_StatusType_ERROR = 2
 } robotsystemcommunication_StatusType;
 
 typedef enum _robotsystemcommunication_ImageType {
@@ -92,7 +93,7 @@ typedef struct _robotsystemcommunication_RobotResponse {
 
 
 /* Helper constants for enums */
-#define _robotsystemcommunication_StatusType_MIN robotsystemcommunication_StatusType_OK
+#define _robotsystemcommunication_StatusType_MIN robotsystemcommunication_StatusType_UNKNOWN
 #define _robotsystemcommunication_StatusType_MAX robotsystemcommunication_StatusType_ERROR
 #define _robotsystemcommunication_StatusType_ARRAYSIZE ((robotsystemcommunication_StatusType)(robotsystemcommunication_StatusType_ERROR+1))
 

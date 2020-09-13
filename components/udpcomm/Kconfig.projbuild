@@ -1,0 +1,9 @@
+menu "MicroInvaders UDP server"
+config UDP_LED_ACTIVITY_TIME
+    int "LED activity period (ms)"
+    default 200
+    help
+    	How long should LED stay active after receiving a network packet, in milliseconds.
+
+endmenu
+

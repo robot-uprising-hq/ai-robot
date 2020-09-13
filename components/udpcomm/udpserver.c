@@ -9,10 +9,13 @@
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
-#include <lwip/netdb.h>
+#include "lwip/netdb.h"
 #include <sys/param.h>
-#include <pb_decode.h>
+#include "pb_decode.h"
+#include "pb_encode.h"
 #include "proto/RobotSystemCommunication.pb.h"
+#include "wificonnect.h"
+#include "led_control.h"
 
 #define PORT 50052
 
@@ -21,6 +24,7 @@ static const char *TAG = "udpsrv";
 void udp_server(MotorActionCallback motor_action_cb)
 {
     unsigned char rx_buffer[128];
+    unsigned char tx_buffer[128];
     char addr_str[128];
     int addr_family;
     int ip_protocol;
@@ -70,9 +74,7 @@ void udp_server(MotorActionCallback motor_action_cb)
             if (len < 0) {
                 ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
                 break;
-            }
-                // Data received
-            else {
+            } else {
                 // Get the sender's ip address as string
                 if (source_addr.sin6_family == PF_INET) {
                     inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr.s_addr, addr_str, sizeof(addr_str) - 1);
@@ -84,30 +86,54 @@ void udp_server(MotorActionCallback motor_action_cb)
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
                 ESP_LOGI(TAG, "%s", rx_buffer);
 
-                {
-                    robotsystemcommunication_RobotRequest req =
-                            robotsystemcommunication_RobotRequest_init_zero;
-                    pb_istream_t stream = pb_istream_from_buffer(rx_buffer, len);
+                led_control_activate(LED_SERVER, CONFIG_UDP_LED_ACTIVITY_TIME);
 
-                    bool status;
-                    status = pb_decode(&stream, robotsystemcommunication_RobotRequest_fields, &req);
+                robotsystemcommunication_RobotRequest req =
+                        robotsystemcommunication_RobotRequest_init_zero;
+                pb_istream_t stream = pb_istream_from_buffer(rx_buffer, len);
 
-                    if (!status) {
-                        ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream));
-                    } else {
-                        ESP_LOGI(TAG, "Got request type: %d", req.which_req);
-                        if (req.which_req == robotsystemcommunication_RobotRequest_act_tag) {
-                            ESP_LOGI(TAG, "Got action request: %d %d %d", req.req.act.leftMotorAction,
-                                    req.req.act.rightMotorAction, req.req.act.actionTimeout);
-                            if (motor_action_cb != NULL) {
-                                motor_action_cb(req.req.act.leftMotorAction, req.req.act.rightMotorAction,
-                                                req.req.act.actionTimeout);
-                            }
-                        } else if (req.which_req == robotsystemcommunication_RobotRequest_ping_tag) {
-                            ESP_LOGI(TAG, "Got ping request");
+                bool status;
+                status = pb_decode(&stream, robotsystemcommunication_RobotRequest_fields, &req);
+
+                if (!status) {
+                    ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream));
+                } else {
+                    ESP_LOGI(TAG, "Got request type: %d", req.which_req);
+
+                    robotsystemcommunication_RobotResponse resp =
+                            robotsystemcommunication_RobotResponse_init_zero;
+                    resp.reqId = req.reqId;
+
+                    if (req.which_req == robotsystemcommunication_RobotRequest_act_tag) {
+                        ESP_LOGI(TAG, "Got action request: %d %d %d", req.req.act.leftMotorAction,
+                                req.req.act.rightMotorAction, req.req.act.actionTimeout);
+                        if (motor_action_cb != NULL) {
+                            motor_action_cb(req.req.act.leftMotorAction, req.req.act.rightMotorAction,
+                                            req.req.act.actionTimeout);
                         }
+                        resp.which_resp = robotsystemcommunication_RobotResponse_act_tag;
+                        resp.resp.act.status = robotsystemcommunication_StatusType_OK;
+                    } else if (req.which_req == robotsystemcommunication_RobotRequest_ping_tag) {
+                        ESP_LOGI(TAG, "Got ping request");
+                        resp.which_resp = robotsystemcommunication_RobotResponse_ping_tag;
+                        get_ip_addr(resp.resp.ping.ipAddress, sizeof(resp.resp.ping.ipAddress));
+                    } else {
+                        ESP_LOGE(TAG, "Unknown request type");
+                    }
 
-                        // TODO: send response
+                    if (resp.which_resp != 0) {
+
+                        pb_ostream_t ostream = pb_ostream_from_buffer(tx_buffer, sizeof(tx_buffer));
+                        bool ret = pb_encode(&ostream, robotsystemcommunication_RobotResponse_fields, &resp);
+                        if (!ret) {
+                            ESP_LOGE(TAG, "Failed to encode response to msg %d", req.which_req);
+                        } else {
+                            len = sendto(sock, tx_buffer, ostream.bytes_written, 0, (struct sockaddr *) &source_addr,
+                                         socklen);
+                            if (len < 0) {
+                                ESP_LOGE(TAG, "sendto failed: errno %d", errno);
+                            }
+                        }
                     }
                 }
             }
