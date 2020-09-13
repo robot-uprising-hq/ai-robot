@@ -1,4 +1,4 @@
-menu "MicroInvaders wifi config"
+menu "MicroInvaders WiFi"
 config WIFI_SSID
     string "WiFi SSID"
     help

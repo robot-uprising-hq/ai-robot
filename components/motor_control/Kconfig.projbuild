@@ -1,4 +1,4 @@
-menu "MicroInvaders motor config"
+menu "MicroInvaders motor control"
 config MC_DEFAULT_PWM_FREQ
     int "Default PWM frequency"
     default 1000
