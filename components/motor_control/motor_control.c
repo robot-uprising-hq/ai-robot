@@ -125,7 +125,7 @@ void motor_control_set_hard_timeout(int hard_timeout)
 void update_led_state()
 {
     if (mcpwm_get_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A) > 0 ||
-        mcpwm_get_duty(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_GEN_A)){
+        mcpwm_get_duty(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_GEN_A)) {
         led_control_activate(LED_ACTIVITY, 0);
     } else {
         led_control_deactivate(LED_ACTIVITY);
@@ -174,21 +174,23 @@ void motor_set_speed(int motor, float speed, int timeout)
             calc_timeout = motor_control_config.hard_timeout;
         }
     }
-    if (calc_timeout > 0 && fabs(speed) > 0) {
+
+    uint64_t usecs = calc_timeout * 1000;
+    if (usecs > 0 && fabs(speed) > 0) {
         esp_err_t err;
-        err = esp_timer_start_once(*stop_timer_handle, calc_timeout * 1000);
+        err = esp_timer_start_once(*stop_timer_handle, usecs);
         ESP_ERROR_CHECK(err); // this should never fail.
     }
 
     update_led_state();
-    printf("Motor %d set to %f speed.\n", motor, speed);
+    printf("Motor %d set to %f speed, adjusted timeout %lld.\n", motor, speed, usecs);
 }
 
 void motor_control_stop_motor_callback(void *arg)
 {
     int motor = (int)arg;
     if (motor == 1 || motor == 2) {
-        ESP_LOGI(TAG, "Stopped motor %d.", motor);
+        ESP_LOGI(TAG, "Stopping motor %d.", motor);
         motor_set_speed(motor, 0, 0);
     } else {
         ESP_LOGE(TAG, "Invalid motor value %d.", motor);
