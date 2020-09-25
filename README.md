@@ -82,6 +82,9 @@ CONDITIONS OF ANY KIND, either express or implied.*
 ## Docker compile
 docker run --rm -v $PWD:/project -w /project espressif/idf:release-v4.2 idf.py build
 
+## Docker menuconfig to edit defaults settings for WIFI and motor
+docker run --rm -it -v $PWD:/project -w /project espressif/idf:release-v4.2 idf.py menuconfig
+
 ## Docker flash
 docker run --rm --privileged -v /dev:/dev -v $PWD:/project -w /project espressif/idf:release-v4.2 idf.py -p /dev/ttyUSB0 flash
 
