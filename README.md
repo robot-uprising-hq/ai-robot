@@ -1,11 +1,20 @@
-# MicroInvaders firmware
+# Micro Invaders Firmware
 
-This project contains the firmware for the ESP32 hardware, needed to communicate with the example framework. You are
- of course free to tweak this code to code to work in any way you wish to improve the performance of your project
- ; please take note of the roolz however :)
+This repository contains firmware for the [robots](https://github.com/robot-uprising-hq/ai-robot-hardware) that can be used in [Micro Invader competition](https://github.com/robot-uprising-hq/ai-guide).
+
+This firmware supports sending motor commands over Wifi. The commands are seralized with Protocol buffers.
+
+You are free to tweak this code to code to work in any way you wish to improve the performance of your project.
 
 Built using latest [Espressif IoT Development Framework](https://github.com/espressif/esp-idf), at the time of writing `release/v4.2`.
 
+The firmware works well with [ai-simulator](https://github.com/robot-uprising-hq/ai-simulator) simulator. The
+firmware in this repo is also compatible with the text based motor command used by the [zero-ones-simulated](https://github.com/zero-ones-given/zero-ones-simulated). Other
+extensions will require the protobuffer messages for communication.
+
+There is also another alternative firmware for the robot, [ai-robot-udp](https://github.com/robot-uprising-hq/ai
+-robot-udp). It works well with [zero-ones-simulated](https://github.com/zero-ones-given/zero-ones-simulated). 
+ 
 ## Installation
 
 Please check [ESP-IDF docs](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for getting
@@ -21,7 +30,7 @@ I suggest creating a virtual environment with python.
 The ESP tools are installed by running `install.sh` from the esp-idf repository.
 
 After installing the python environment, if running the `. export.sh` gives you grief about missing packages, you can
- try to install exact versions of the packages -- I got it to work with
+try to install exact versions of the packages -- I got it to work with
 
 ```shell script
 pip install 'pygdbmi==0.9.0.2' 'gdbgui==0.13.2.0'
@@ -30,6 +39,7 @@ pip install 'pygdbmi==0.9.0.2' 'gdbgui==0.13.2.0'
 ## Running on the robot
 
 Plug the USB cable to your robot and optionally note down the USB tty device.
+
 ```shell script
 (ve)% idf.py flash monitor
 ```
@@ -101,13 +111,6 @@ act {
 }
 ```
 
-## Re-creating the protocol code
-
-Use `ai-proto` repository script `gen-robot.sh` (or check how the script works) to regenerate the protocol files in the 
-`udpcomm` component of this project (see `components/udpcomm`). 
-
-TODO: generating all python code at once from the ai-proto repo
-
 ## LED specification
 
 WiFi LED will indicate connectivity state. It is lit if WiFi is connected and the device has received an IP-address. 
@@ -122,12 +125,23 @@ TODO: Server LED will light up if it has recently been in contact with a backend
 If you do not want to install the esp-idf development environment locally, you can use Docker.
 
 ### Docker compile
-docker run --rm -v $PWD:/project -w /project espressif/idf:release-v4.2 idf.py build
+
+docker run --rm -v \$PWD:/project -w /project espressif/idf:release-v4.2 idf.py build
+
+### Docker menuconfig to edit defaults settings for WIFI and motor
+
+docker run --rm -it -v \$PWD:/project -w /project espressif/idf:release-v4.2 idf.py menuconfig
 
 ### Docker flash
-docker run --rm --privileged -v /dev:/dev -v $PWD:/project -w /project espressif/idf:release-v4.2 idf.py -p /dev/ttyUSB0 flash
 
----
+docker run --rm --privileged -v /dev:/dev -v \$PWD:/project -w /project espressif/idf:release-v4.2 idf.py -p /dev/ttyUSB0 flash
+
+## Re-creating the protocol code
+
+Use `ai-proto` repository script `gen-robot.sh` (or check how the script works) to regenerate the protocol files in the 
+`udpcomm` component of this project (see `components/udpcomm`). 
+
+TODO: generating all python code at once from the ai-proto repo
 
 ## Serial communication with Putty
 
@@ -141,19 +155,19 @@ Configure Putty to show input user types.
 
 ### Available commands for AI Robot ESP32
 
-|Command| Action  |
-|---|---|
-|  help | Show this help  |
-|  scan | Do a quick Wifi AP scan. |
-|  query |Show configuration. |
-|  query all | Show all configuration, including passwords.  |
-|  set ssid SSID | Set WiFi AP to use to SSID.  |
-|  set passwd PASSWD | Set Wifi password to PASSWD. |
-|  udpsrvstart | Start UDP server.  |
-|  wifistart | (Attempt to) start WiFi.  |
-|  wifistop | Disconnect from WiFi.  |
-|  motortest | Run simple test of the motors.  |
-|  quit | Exit command-loop (mainly for debugging).  |
+| Command           | Action                                       |
+| ----------------- | -------------------------------------------- |
+| help              | Show this help                               |
+| scan              | Do a quick Wifi AP scan.                     |
+| query             | Show configuration.                          |
+| query all         | Show all configuration, including passwords. |
+| set ssid SSID     | Set WiFi AP to use to SSID.                  |
+| set passwd PASSWD | Set Wifi password to PASSWD.                 |
+| udpsrvstart       | Start UDP server.                            |
+| wifistart         | (Attempt to) start WiFi.                     |
+| wifistop          | Disconnect from WiFi.                        |
+| motortest         | Run simple test of the motors.               |
+| quit              | Exit command-loop (mainly for debugging).    |
 
 ## License boilerplate
 
