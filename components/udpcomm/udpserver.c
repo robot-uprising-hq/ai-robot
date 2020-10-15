@@ -96,7 +96,14 @@ void udp_server(MotorActionCallback motor_action_cb)
                 status = pb_decode(&stream, robotsystemcommunication_RobotRequest_fields, &req);
 
                 if (!status) {
-                    ESP_LOGE(TAG, "Decoding failed: %s", PB_GET_ERROR(&stream));
+                    ESP_LOGI(TAG, "Decoding failed: %s, trying text based robot control", PB_GET_ERROR(&stream));
+                    int left = 0, right = 0;
+                    int ret = sscanf((char *)rx_buffer, "%d;%d", &left, &right);
+                    if (ret > 0) {
+                        motor_action_cb(left, right, 0);
+                        sendto(sock, "Ok", 2, 0, (struct sockaddr *) &source_addr,
+                               socklen);
+                    }
                 } else {
                     ESP_LOGI(TAG, "Got request type: %d", req.which_req);
 
