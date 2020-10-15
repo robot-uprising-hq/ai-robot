@@ -41,6 +41,9 @@ typedef struct _robotsystemcommunication_SimulationScreenCaptureResponse {
 
 typedef struct _robotsystemcommunication_BrainActionResponse {
     int32_t action;
+    int32_t leftMotorAction;
+    int32_t rightMotorAction;
+    int32_t actionTimeout;
 } robotsystemcommunication_BrainActionResponse;
 
 typedef struct _robotsystemcommunication_RobotActionRequest {
@@ -56,10 +59,17 @@ typedef struct _robotsystemcommunication_RobotActionResponse {
 typedef struct _robotsystemcommunication_RobotPingResponse {
     char ipAddress[32];
     char macAddress[32];
+    pb_callback_t robotId;
+    pb_callback_t teamId;
+    float voltage;
+    float startupVoltage;
 } robotsystemcommunication_RobotPingResponse;
 
 typedef struct _robotsystemcommunication_SimulationActionRequest {
     int32_t action;
+    int32_t leftMotorAction;
+    int32_t rightMotorAction;
+    int32_t actionTimeout;
 } robotsystemcommunication_SimulationActionRequest;
 
 typedef struct _robotsystemcommunication_SimulationActionResponse {
@@ -68,7 +78,7 @@ typedef struct _robotsystemcommunication_SimulationActionResponse {
 
 typedef struct _robotsystemcommunication_SimulationScreenCaptureRequest {
     int32_t height;
-    int32_t widht;
+    int32_t width;
     robotsystemcommunication_ImageType imageType;
     int32_t jpgQuality;
 } robotsystemcommunication_SimulationScreenCaptureRequest;
@@ -106,26 +116,26 @@ typedef struct _robotsystemcommunication_RobotResponse {
 #define robotsystemcommunication_RobotActionRequest_init_default {0, 0, 0}
 #define robotsystemcommunication_RobotActionResponse_init_default {_robotsystemcommunication_StatusType_MIN}
 #define robotsystemcommunication_RobotPingRequest_init_default {0}
-#define robotsystemcommunication_RobotPingResponse_init_default {"", ""}
+#define robotsystemcommunication_RobotPingResponse_init_default {"", "", {{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
 #define robotsystemcommunication_RobotRequest_init_default {0, 0, {robotsystemcommunication_RobotActionRequest_init_default}}
 #define robotsystemcommunication_RobotResponse_init_default {0, 0, {robotsystemcommunication_RobotActionResponse_init_default}}
-#define robotsystemcommunication_BrainActionResponse_init_default {0}
+#define robotsystemcommunication_BrainActionResponse_init_default {0, 0, 0, 0}
 #define robotsystemcommunication_BrainActionRequest_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
 #define robotsystemcommunication_SimulationScreenCaptureResponse_init_default {{{NULL}, NULL}}
 #define robotsystemcommunication_SimulationScreenCaptureRequest_init_default {0, 0, _robotsystemcommunication_ImageType_MIN, 0}
-#define robotsystemcommunication_SimulationActionRequest_init_default {0}
+#define robotsystemcommunication_SimulationActionRequest_init_default {0, 0, 0, 0}
 #define robotsystemcommunication_SimulationActionResponse_init_default {_robotsystemcommunication_StatusType_MIN}
 #define robotsystemcommunication_RobotActionRequest_init_zero {0, 0, 0}
 #define robotsystemcommunication_RobotActionResponse_init_zero {_robotsystemcommunication_StatusType_MIN}
 #define robotsystemcommunication_RobotPingRequest_init_zero {0}
-#define robotsystemcommunication_RobotPingResponse_init_zero {"", ""}
+#define robotsystemcommunication_RobotPingResponse_init_zero {"", "", {{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
 #define robotsystemcommunication_RobotRequest_init_zero {0, 0, {robotsystemcommunication_RobotActionRequest_init_zero}}
 #define robotsystemcommunication_RobotResponse_init_zero {0, 0, {robotsystemcommunication_RobotActionResponse_init_zero}}
-#define robotsystemcommunication_BrainActionResponse_init_zero {0}
+#define robotsystemcommunication_BrainActionResponse_init_zero {0, 0, 0, 0}
 #define robotsystemcommunication_BrainActionRequest_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
 #define robotsystemcommunication_SimulationScreenCaptureResponse_init_zero {{{NULL}, NULL}}
 #define robotsystemcommunication_SimulationScreenCaptureRequest_init_zero {0, 0, _robotsystemcommunication_ImageType_MIN, 0}
-#define robotsystemcommunication_SimulationActionRequest_init_zero {0}
+#define robotsystemcommunication_SimulationActionRequest_init_zero {0, 0, 0, 0}
 #define robotsystemcommunication_SimulationActionResponse_init_zero {_robotsystemcommunication_StatusType_MIN}
 
 /* Field tags (for use in manual encoding/decoding) */
@@ -133,16 +143,26 @@ typedef struct _robotsystemcommunication_RobotResponse {
 #define robotsystemcommunication_BrainActionRequest_upperObservations_tag 2
 #define robotsystemcommunication_SimulationScreenCaptureResponse_image_tag 1
 #define robotsystemcommunication_BrainActionResponse_action_tag 1
+#define robotsystemcommunication_BrainActionResponse_leftMotorAction_tag 2
+#define robotsystemcommunication_BrainActionResponse_rightMotorAction_tag 3
+#define robotsystemcommunication_BrainActionResponse_actionTimeout_tag 4
 #define robotsystemcommunication_RobotActionRequest_leftMotorAction_tag 1
 #define robotsystemcommunication_RobotActionRequest_rightMotorAction_tag 2
 #define robotsystemcommunication_RobotActionRequest_actionTimeout_tag 3
 #define robotsystemcommunication_RobotActionResponse_status_tag 1
 #define robotsystemcommunication_RobotPingResponse_ipAddress_tag 1
 #define robotsystemcommunication_RobotPingResponse_macAddress_tag 2
+#define robotsystemcommunication_RobotPingResponse_robotId_tag 3
+#define robotsystemcommunication_RobotPingResponse_teamId_tag 4
+#define robotsystemcommunication_RobotPingResponse_voltage_tag 5
+#define robotsystemcommunication_RobotPingResponse_startupVoltage_tag 6
 #define robotsystemcommunication_SimulationActionRequest_action_tag 1
+#define robotsystemcommunication_SimulationActionRequest_leftMotorAction_tag 2
+#define robotsystemcommunication_SimulationActionRequest_rightMotorAction_tag 3
+#define robotsystemcommunication_SimulationActionRequest_actionTimeout_tag 4
 #define robotsystemcommunication_SimulationActionResponse_status_tag 1
 #define robotsystemcommunication_SimulationScreenCaptureRequest_height_tag 1
-#define robotsystemcommunication_SimulationScreenCaptureRequest_widht_tag 2
+#define robotsystemcommunication_SimulationScreenCaptureRequest_width_tag 2
 #define robotsystemcommunication_SimulationScreenCaptureRequest_imageType_tag 3
 #define robotsystemcommunication_SimulationScreenCaptureRequest_jpgQuality_tag 4
 #define robotsystemcommunication_RobotRequest_act_tag 10
@@ -172,8 +192,12 @@ X(a, STATIC,   SINGULAR, UENUM,    status,            1)
 
 #define robotsystemcommunication_RobotPingResponse_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   ipAddress,         1) \
-X(a, STATIC,   SINGULAR, STRING,   macAddress,        2)
-#define robotsystemcommunication_RobotPingResponse_CALLBACK NULL
+X(a, STATIC,   SINGULAR, STRING,   macAddress,        2) \
+X(a, CALLBACK, SINGULAR, STRING,   robotId,           3) \
+X(a, CALLBACK, SINGULAR, STRING,   teamId,            4) \
+X(a, STATIC,   SINGULAR, FLOAT,    voltage,           5) \
+X(a, STATIC,   SINGULAR, FLOAT,    startupVoltage,    6)
+#define robotsystemcommunication_RobotPingResponse_CALLBACK pb_default_field_callback
 #define robotsystemcommunication_RobotPingResponse_DEFAULT NULL
 
 #define robotsystemcommunication_RobotRequest_FIELDLIST(X, a) \
@@ -195,7 +219,10 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (resp,ping,resp.ping),  11)
 #define robotsystemcommunication_RobotResponse_resp_ping_MSGTYPE robotsystemcommunication_RobotPingResponse
 
 #define robotsystemcommunication_BrainActionResponse_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    action,            1)
+X(a, STATIC,   SINGULAR, INT32,    action,            1) \
+X(a, STATIC,   SINGULAR, INT32,    leftMotorAction,   2) \
+X(a, STATIC,   SINGULAR, INT32,    rightMotorAction,   3) \
+X(a, STATIC,   SINGULAR, INT32,    actionTimeout,     4)
 #define robotsystemcommunication_BrainActionResponse_CALLBACK NULL
 #define robotsystemcommunication_BrainActionResponse_DEFAULT NULL
 
@@ -212,14 +239,17 @@ X(a, CALLBACK, SINGULAR, BYTES,    image,             1)
 
 #define robotsystemcommunication_SimulationScreenCaptureRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT32,    height,            1) \
-X(a, STATIC,   SINGULAR, INT32,    widht,             2) \
+X(a, STATIC,   SINGULAR, INT32,    width,             2) \
 X(a, STATIC,   SINGULAR, UENUM,    imageType,         3) \
 X(a, STATIC,   SINGULAR, INT32,    jpgQuality,        4)
 #define robotsystemcommunication_SimulationScreenCaptureRequest_CALLBACK NULL
 #define robotsystemcommunication_SimulationScreenCaptureRequest_DEFAULT NULL
 
 #define robotsystemcommunication_SimulationActionRequest_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    action,            1)
+X(a, STATIC,   SINGULAR, INT32,    action,            1) \
+X(a, STATIC,   SINGULAR, INT32,    leftMotorAction,   2) \
+X(a, STATIC,   SINGULAR, INT32,    rightMotorAction,   3) \
+X(a, STATIC,   SINGULAR, INT32,    actionTimeout,     4)
 #define robotsystemcommunication_SimulationActionRequest_CALLBACK NULL
 #define robotsystemcommunication_SimulationActionRequest_DEFAULT NULL
 
@@ -259,14 +289,14 @@ extern const pb_msgdesc_t robotsystemcommunication_SimulationActionResponse_msg;
 #define robotsystemcommunication_RobotActionRequest_size 33
 #define robotsystemcommunication_RobotActionResponse_size 2
 #define robotsystemcommunication_RobotPingRequest_size 0
-#define robotsystemcommunication_RobotPingResponse_size 66
+/* robotsystemcommunication_RobotPingResponse_size depends on runtime parameters */
 #define robotsystemcommunication_RobotRequest_size 41
-#define robotsystemcommunication_RobotResponse_size 74
-#define robotsystemcommunication_BrainActionResponse_size 11
+/* robotsystemcommunication_RobotResponse_size depends on runtime parameters */
+#define robotsystemcommunication_BrainActionResponse_size 44
 /* robotsystemcommunication_BrainActionRequest_size depends on runtime parameters */
 /* robotsystemcommunication_SimulationScreenCaptureResponse_size depends on runtime parameters */
 #define robotsystemcommunication_SimulationScreenCaptureRequest_size 35
-#define robotsystemcommunication_SimulationActionRequest_size 11
+#define robotsystemcommunication_SimulationActionRequest_size 44
 #define robotsystemcommunication_SimulationActionResponse_size 2
 
 #ifdef __cplusplus

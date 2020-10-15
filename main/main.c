@@ -25,6 +25,7 @@
 #include "udpserver.h"
 #include "motor_control.h"
 #include "led_control.h"
+#include "battery_monitor.h"
 
 static const char* TAG = "robotfrontend";
 
@@ -449,6 +450,8 @@ void app_main(void)
     ESP_ERROR_CHECK( ret );
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    battery_monitor_setup();
 
     xTaskCreate(command_loop_task, "command_loop", 4*1024, NULL, 5, NULL);
 }

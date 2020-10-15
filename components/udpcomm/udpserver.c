@@ -16,6 +16,7 @@
 #include "proto/RobotSystemCommunication.pb.h"
 #include "wificonnect.h"
 #include "led_control.h"
+#include "battery_monitor.h"
 
 #define PORT 50052
 
@@ -124,6 +125,9 @@ void udp_server(MotorActionCallback motor_action_cb)
                         ESP_LOGI(TAG, "Got ping request");
                         resp.which_resp = robotsystemcommunication_RobotResponse_ping_tag;
                         get_ip_addr(resp.resp.ping.ipAddress, sizeof(resp.resp.ping.ipAddress));
+                        resp.resp.ping.startupVoltage = battery_monitor_get_startup_voltage();
+                        resp.resp.ping.voltage = battery_monitor_get_voltage();
+
                     } else {
                         ESP_LOGE(TAG, "Unknown request type");
                     }
