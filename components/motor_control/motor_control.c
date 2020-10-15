@@ -170,7 +170,7 @@ void motor_set_speed(int motor, float speed, int timeout)
     int calc_timeout = timeout;
     /* Cap the timeout to the hard timeout. */
     if (motor_control_config.hard_timeout > 0) {
-        if (calc_timeout > motor_control_config.hard_timeout) {
+        if (calc_timeout > motor_control_config.hard_timeout || calc_timeout == 0) {
             calc_timeout = motor_control_config.hard_timeout;
         }
     }
